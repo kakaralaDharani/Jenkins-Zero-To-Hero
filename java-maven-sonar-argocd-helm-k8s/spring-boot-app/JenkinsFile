@@ -68,6 +68,21 @@ pipeline {
 }
 
 
+    //===========
+    //* . Docker version
+    //==========
+    stage('Upgrade Docker CLI') {
+    steps {
+        sh '''
+            apt-get update
+            apt-get install -y docker-ce-cli
+
+            echo "Docker version after upgrade:"
+            docker version
+        '''
+    }
+}
+
     // =========================
     // 4. Build and Push Docker
     // =========================
