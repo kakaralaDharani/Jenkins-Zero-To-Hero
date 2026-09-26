@@ -83,6 +83,23 @@ pipeline {
     }
 }
 
+
+     stage('Check Jenkins Docker') {
+    steps {
+        sh '''
+            echo "PATH=$PATH"
+            echo "USER=$(whoami)"
+            echo "HOST=$(hostname)"
+            echo "Docker binary:"
+            which docker
+            ls -l $(which docker)
+            echo "Docker version:"
+            docker version
+            echo "Docker API environment:"
+            env | grep DOCKER || true
+        '''
+    }
+}
     // =========================
     // 4. Build and Push Docker
     // =========================
