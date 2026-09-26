@@ -22,8 +22,6 @@ pipeline {
         stage('Build and Test') {
             steps {
 
-                sh 'ls -ltr'
-
                 sh '''
                     cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
                     mvn clean package
@@ -61,82 +59,58 @@ pipeline {
         }
 
         // =========================
-        // 4. Check Docker
-        // =========================
-        stage('Check Jenkins Docker') {
-            steps {
-                sh '''
-                    echo "PATH=$PATH"
-                    echo "USER=$(whoami)"
-                    echo "HOST=$(hostname)"
-
-                    echo "Docker binary:"
-                    which docker
-                    ls -l $(which docker)
-
-                    echo "Docker version:"
-                    docker version
-
-                    echo "Maven version:"
-                    mvn -version
-                '''
-            }
-        }
-
-        // =========================
-        // 5. Build and Push Docker
+        // 4. Docker Build and Push
         // =========================
         stage('Build and Push Docker Image') {
 
-    environment {
-        DOCKER_IMAGE = "dharani14ra/ultimate-cicd:${BUILD_NUMBER}"
-    }
+            environment {
+                DOCKER_IMAGE = "dharani14ra/ultimate-cicd:${BUILD_NUMBER}"
+            }
 
-    steps {
+            steps {
 
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'docker-cred',
-                usernameVariable: 'DOCKER_USERNAME',
-                passwordVariable: 'DOCKER_PASSWORD'
-            )
-        ]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-cred',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
 
-            sh '''
-                echo "Docker being used:"
-                /usr/bin/docker --version
-                /usr/bin/docker version
+                    sh '''
+                        # Remove any old Docker API override
+                        unset DOCKER_API_VERSION
 
-                cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
+                        echo "Docker version:"
+                        /usr/bin/docker --version
 
-                echo "Building: ${DOCKER_IMAGE}"
-                /usr/bin/docker build -t ${DOCKER_IMAGE} .
+                        echo "Building Docker image..."
 
-                echo "Logging in to Docker Hub"
-                echo "${DOCKER_PASSWORD}" | /usr/bin/docker login \
-                    -u "${DOCKER_USERNAME}" \
-                    --password-stdin
+                        cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
 
-                echo "Pushing image"
-                /usr/bin/docker push ${DOCKER_IMAGE}
+                        /usr/bin/docker build \
+                            -t ${DOCKER_IMAGE} .
 
-                /usr/bin/docker logout
-            '''
+                        echo "Logging in to Docker Hub..."
+
+                        echo "${DOCKER_PASSWORD}" | /usr/bin/docker login \
+                            --username "${DOCKER_USERNAME}" \
+                            --password-stdin
+
+                        echo "Pushing Docker image..."
+
+                        /usr/bin/docker push ${DOCKER_IMAGE}
+
+                        /usr/bin/docker logout
+                    '''
+                }
+            }
         }
-    }
-}
-
-                       
 
         // =========================
-        // 6. Update Kubernetes YAML
+        // 5. Update Kubernetes YAML
         // =========================
         stage('Update Deployment File') {
-
-            environment {
-                GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-                GIT_USER_NAME = "kakaralaDharani"
-            }
 
             steps {
 
@@ -161,7 +135,7 @@ pipeline {
                           -m "Update deployment image to version ${BUILD_NUMBER}" || true
 
                         git push \
-                          https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git \
+                          https://${GITHUB_TOKEN}@github.com/kakaralaDharani/Jenkins-Zero-To-Hero.git \
                           HEAD:main
                     '''
                 }
